@@ -44,15 +44,28 @@ created a mesh object corresponding to this text (using itksnap).
 Loading the mesh object and an image volume containing the annotation should
 produce a scene with the mesh and volume rendering components overlaid.
 
-Images are as follows:
+Images are as follows - decompress before attempting to load:
 
 MNI152_T1_0.5mm_anot.nii.gz - the standard 0.5 mm average brain with text.
 MNI152_T1_0.5mm_anot_A.nii.gz - version with x and y axes flipped.
 MNI152_T1_0.5mm_anot_B.nii.gz - version with y and z axes swapped.
 MNI152_T1_2mm_brain.nii.gz - the standard template at 2mm resolution
+rMNI152_T1_2mm_brain.nii.gz - the standard template resliced so that the y axis has 0.5mm voxels. 
 MNI152_T1_2mm_brain_B.nii.gz - with z and y axes swapped.
 RL_mask_dil.nii.gz - the text image (at 0.5mm)
 RL_mask_2mm.nii.gz - the 2mm version of the text image.
 
 
+
+--------------------------
+Plugin files:
+
+vtkNIfTIReader.h
+vtkNIfTIReader.cxx
+
+These go into
+
+Plugins/AnalyzeNIfTIReaderWriter/
+
+And replace files of the same name.
 
