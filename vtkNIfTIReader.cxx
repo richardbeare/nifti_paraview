@@ -442,6 +442,26 @@ void vtkNIfTIReader::ExecuteInformation()
     InPlaceFilteredAxes[2]=2;
     }
 
+  permuteNeeded=false;
+  for (count=0;count<3;count++)
+    {
+    if (InPlaceFilteredAxes[count] != count)
+      {
+      permuteNeeded=true;
+      break;
+      }
+    }
+  flipNeeded=false;
+  for (count=0;count<3;count++)
+    {
+    if (flipAxis[count])
+      {
+      flipNeeded=true;
+      break;
+      }
+    }
+
+
   for (count=0;count<3;count++){
     inDim[count] = (this->DataExtent[(count*2)+1] - this->DataExtent[count*2]) + 1;
     inSpacing[count] = this->DataSpacing[count];
@@ -711,108 +731,95 @@ void vtkNIfTIReader::ExecuteDataWithInformation(vtkDataObject *output, vtkInform
 
   size_t tempUnsignedCharDataSize = outDim[0]*outDim[1]*outDim[2]*scalarSize;
 
-  tempUnsignedCharData = new unsigned char[tempUnsignedCharDataSize];
-
+  if (permuteNeeded || flipNeeded)
+    {
+    tempUnsignedCharData = new unsigned char[tempUnsignedCharDataSize];
+    }
   int idSize;
   int idZ, idY, idX;
   int inIndex[3];
-  // Loop through input voxels
-  // Why can't I do a memcopy and one pass to copy back, or vise versa?
-  count = 0;
-  for ( inIndex[2] = 0 ; inIndex[2] < outDim[2] ; inIndex[2]++){
-    for ( inIndex[1] = 0; inIndex[1] < outDim[1] ; inIndex[1]++){
-      for (inIndex[0] = 0; inIndex[0] < outDim[0] ; inIndex[0]++){
-      inOffset = (inIndex[2]*outStride[2] ) + (inIndex[1] * outStride[1] ) + (inIndex[0] * outStride[0]);
+  if (permuteNeeded)
+    {
+    // Loop through input voxels
+    count = 0;
+    for ( inIndex[2] = 0 ; inIndex[2] < outDim[2] ; inIndex[2]++)
+      {
+      for ( inIndex[1] = 0; inIndex[1] < outDim[1] ; inIndex[1]++)
+        {
+        for (inIndex[0] = 0; inIndex[0] < outDim[0] ; inIndex[0]++)
+          {
+          inOffset = (inIndex[2]*outStride[2] ) + (inIndex[1] * outStride[1] ) + (inIndex[0] * outStride[0]);
 
-        for (idSize = 0; idSize < scalarSize ; idSize++){
-          charInOffset = inOffset + idSize;
-          tempUnsignedCharData[count] = outUnsignedCharPtr[charInOffset];
-          count++;
-          }
-        }
-      }
-    }
-  memcpy(outUnsignedCharPtr, tempUnsignedCharData, tempUnsignedCharDataSize);
-#if 0
-
-
-  // Loop through output voxels
-  count = 0;
-  for (idZ = 0 ; idZ < outDim[2] ; idZ++){
-    outSliceOffset = idZ * outSliceSize;
-    for (idY = 0; idY < outDim[1]; idY++){
-      outRowOffset = idY * outRowSize;
-      for (idX = 0; idX < outDim[0]  ; idX++){
-        outOffset = outSliceOffset + outRowOffset + (idX * scalarSize);
-        for (idSize = 0; idSize < scalarSize ; idSize++){
-          charOutOffset = outOffset + idSize;
-          outUnsignedCharPtr[charOutOffset] = tempUnsignedCharData[count++];
-          }
-        }
-      }
-    }
-#endif
-  //now flip
-  long outSliceSize = outDim[0]*outDim[1]*scalarSize;
-  long outRowSize   = outDim[0]*scalarSize;
-  long outRowOffset;
-  long outSliceOffset;
-  long outOffset;
-  long charOutOffset;
-
-  // Loop through input voxels
-  count = 0;
-  for ( inIndex[2] = 0 ; inIndex[2] < outDim[2] ; inIndex[2]++){
-    if(flipAxis[2]==1){
-      flipIndex[2] = ((outDim[2] -1) - inIndex[2]);
-      } else {
-      flipIndex[2] = inIndex[2];
-      }
-    for ( inIndex[1] = 0; inIndex[1] < outDim[1] ; inIndex[1]++){
-      if(flipAxis[1]==1){
-        flipIndex[1] = ((outDim[1] -1) - inIndex[1]);
-        } else {
-        flipIndex[1] = inIndex[1];
-        }
-      for (inIndex[0] = 0; inIndex[0] < outDim[0] ; inIndex[0]++){
-        if(flipAxis[0]==1){
-          flipIndex[0] = ((outDim[0] -1) - inIndex[0]);
-          } else {
-          flipIndex[0] = inIndex[0];
-          }
-        inOffset = (flipIndex[2] * outSliceSize) + (flipIndex[1] * outRowSize) + (flipIndex[0] * scalarSize);
-        for (idSize = 0; idSize < scalarSize ; idSize++){
-          charInOffset = inOffset + idSize;
-          tempUnsignedCharData[count++] = outUnsignedCharPtr[charInOffset];
-          }
-        }
-      }
-    }
-
-  // Loop through output voxels
-  int errorNumber = 0;
-  count = 0;
-  for (idZ = 0 ; idZ < outDim[2] ; idZ++){
-    outSliceOffset = idZ * outSliceSize;
-    for (idY = 0; idY < outDim[1]; idY++){
-      outRowOffset = idY * outRowSize;
-      for (idX = 0; idX < outDim[0]  ; idX++){
-        outOffset = outSliceOffset + outRowOffset + (idX * scalarSize);
-        for (idSize = 0; idSize < scalarSize ; idSize++){
-          charOutOffset = outOffset + idSize;
-          if((charOutOffset < tempUnsignedCharDataSize) && (charOutOffset >=0) && (count >=0) && (count < outPtrSize) ){
-            outUnsignedCharPtr[charOutOffset] = tempUnsignedCharData[count];
-            } else {
-            errorNumber = 1;
+          for (idSize = 0; idSize < scalarSize ; idSize++)
+            {
+            charInOffset = inOffset + idSize;
+            tempUnsignedCharData[count] = outUnsignedCharPtr[charInOffset];
+            count++;
             }
-          count++;
           }
         }
       }
+    memcpy(outUnsignedCharPtr, tempUnsignedCharData, tempUnsignedCharDataSize);
     }
-//#endif
-  delete tempUnsignedCharData;
-  tempUnsignedCharData = NULL;
+
+  if (flipNeeded)
+    {
+    //now flip
+    long outSliceSize = outDim[0]*outDim[1]*scalarSize;
+    long outRowSize   = outDim[0]*scalarSize;
+    long outRowOffset;
+    long outSliceOffset;
+    long outOffset;
+    long charOutOffset;
+
+    // Loop through input voxels
+    count = 0;
+    for ( inIndex[2] = 0 ; inIndex[2] < outDim[2] ; inIndex[2]++)
+      {
+      if(flipAxis[2]==1)
+        {
+        flipIndex[2] = ((outDim[2] -1) - inIndex[2]);
+        }
+      else
+        {
+        flipIndex[2] = inIndex[2];
+        }
+      for ( inIndex[1] = 0; inIndex[1] < outDim[1] ; inIndex[1]++)
+        {
+        if(flipAxis[1]==1)
+          {
+          flipIndex[1] = ((outDim[1] -1) - inIndex[1]);
+          }
+        else
+          {
+          flipIndex[1] = inIndex[1];
+          }
+        for (inIndex[0] = 0; inIndex[0] < outDim[0] ; inIndex[0]++)
+          {
+          if(flipAxis[0]==1)
+            {
+            flipIndex[0] = ((outDim[0] -1) - inIndex[0]);
+            }
+          else
+            {
+            flipIndex[0] = inIndex[0];
+            }
+          inOffset = (flipIndex[2] * outSliceSize) + (flipIndex[1] * outRowSize) + (flipIndex[0] * scalarSize);
+          for (idSize = 0; idSize < scalarSize ; idSize++)
+            {
+            charInOffset = inOffset + idSize;
+            tempUnsignedCharData[count++] = outUnsignedCharPtr[charInOffset];
+            }
+          }
+        }
+      }
+    memcpy(outUnsignedCharPtr, tempUnsignedCharData, tempUnsignedCharDataSize);
+    }
+  if (permuteNeeded || flipNeeded)
+    {
+    delete tempUnsignedCharData;
+    tempUnsignedCharData = NULL;
+    }
 }
 
 //----------------------------------------------------------------------------

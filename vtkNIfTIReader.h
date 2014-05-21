@@ -115,6 +115,7 @@ private:
   int inStride[3];
   int outStride[3];
 
-
+  bool flipNeeded;
+  bool permuteNeeded;
 };
 #endif
